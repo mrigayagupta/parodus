@@ -42,6 +42,7 @@ volatile unsigned int heartBeatTimer;
 pthread_mutex_t close_mut;
 int g_status;
 char *g_redirect_url;
+char *g_jwt_server_ip;
 int mock_strncmp = true;
 
 /*----------------------------------------------------------------------------*/
@@ -114,8 +115,21 @@ nopoll_bool nopoll_conn_wait_until_connection_ready (noPollConn * conn, int time
     return (nopoll_bool) mock();
 }
 
-int allow_insecure_conn (void)
+void setGlobalJWTUrl (char *jwt_server_ip)
 {
+	if (NULL != jwt_server_ip)
+		g_jwt_server_ip = strdup(jwt_server_ip);
+}
+
+int allow_insecure_conn (char *url_buf, int url_buflen,
+	char *port_buf, int port_buflen)
+{
+	UNUSED(url_buflen); UNUSED(port_buf);
+    	UNUSED(port_buflen);
+    	
+    	if (NULL != g_jwt_server_ip)
+		parStrncpy (url_buf, g_jwt_server_ip, 128);
+		
 	function_called ();
 	return (int) mock();
 }
@@ -226,6 +240,7 @@ void test_createSecureConnection()
     assert_non_null(ctx);
 
 #ifdef FEATURE_DNS_QUERY
+	setGlobalJWTUrl ("127.0.0.2");
 	will_return (allow_insecure_conn, 0);
 	expect_function_call (allow_insecure_conn);
 #endif
@@ -233,13 +248,24 @@ void test_createSecureConnection()
     will_return(getWebpaConveyHeader, (intptr_t)"WebPA-1.6 (TG1682)");
     expect_function_call(getWebpaConveyHeader);
 
-	expect_value(nopoll_conn_tls_new6, (intptr_t)ctx, (intptr_t)ctx);
+    expect_value(nopoll_conn_tls_new6, (intptr_t)ctx, (intptr_t)ctx);
+    
+#ifdef FEATURE_DNS_QUERY
+    expect_string(nopoll_conn_tls_new6, (intptr_t)host_ip, g_jwt_server_ip);
+#else    
     expect_string(nopoll_conn_tls_new6, (intptr_t)host_ip, HOST_IP);
+#endif
+    
     will_return(nopoll_conn_tls_new6, NULL);
     expect_function_call(nopoll_conn_tls_new6);
     
 	expect_value(nopoll_conn_tls_new, (intptr_t)ctx, (intptr_t)ctx);
+#ifdef FEATURE_DNS_QUERY	
+    expect_string(nopoll_conn_tls_new, (intptr_t)host_ip, g_jwt_server_ip);
+#else  
     expect_string(nopoll_conn_tls_new, (intptr_t)host_ip, HOST_IP);
+#endif
+  
     will_return(nopoll_conn_tls_new, (intptr_t)&gNPConn);
     expect_function_call(nopoll_conn_tls_new);
 
@@ -275,6 +301,7 @@ void test_createConnection()
     assert_non_null(ctx);
 
 #ifdef FEATURE_DNS_QUERY
+	setGlobalJWTUrl ("127.0.0.2");
 	will_return (allow_insecure_conn, 1);
 	expect_function_call (allow_insecure_conn);
 #endif
@@ -284,7 +311,13 @@ void test_createConnection()
 
 
     expect_value(nopoll_conn_new_opts, (intptr_t)ctx, (intptr_t)ctx);
+    
+#ifdef FEATURE_DNS_QUERY
+    expect_string(nopoll_conn_new_opts, (intptr_t)host_ip, g_jwt_server_ip);
+#else
     expect_string(nopoll_conn_new_opts, (intptr_t)host_ip, HOST_IP);
+#endif
+
     will_return(nopoll_conn_new_opts, (intptr_t)&gNPConn);
     expect_function_call(nopoll_conn_new_opts);
 
@@ -321,6 +354,7 @@ void test_createConnectionConnNull()
     assert_non_null(ctx);
 
 #ifdef FEATURE_DNS_QUERY
+        setGlobalJWTUrl ("127.0.0.2");
 	will_return (allow_insecure_conn, 0);
 	expect_function_call (allow_insecure_conn);
 #endif
@@ -329,12 +363,24 @@ void test_createConnectionConnNull()
     expect_function_call(getWebpaConveyHeader);
 
     expect_value(nopoll_conn_tls_new6, (intptr_t)ctx, (intptr_t)ctx);
+
+#ifdef FEATURE_DNS_QUERY   
+    expect_string(nopoll_conn_tls_new6, (intptr_t)host_ip, g_jwt_server_ip);
+#else
     expect_string(nopoll_conn_tls_new6, (intptr_t)host_ip, HOST_IP);
+#endif
+
     will_return(nopoll_conn_tls_new6, NULL);
     expect_function_call(nopoll_conn_tls_new6);
     
     expect_value(nopoll_conn_tls_new, (intptr_t)ctx, (intptr_t)ctx);
+
+#ifdef FEATURE_DNS_QUERY   
+    expect_string(nopoll_conn_tls_new, (intptr_t)host_ip, g_jwt_server_ip);
+#else
     expect_string(nopoll_conn_tls_new, (intptr_t)host_ip, HOST_IP);
+#endif    
+    
     will_return(nopoll_conn_tls_new, (intptr_t)NULL);
     expect_function_call(nopoll_conn_tls_new);
 
@@ -344,13 +390,23 @@ void test_createConnectionConnNull()
     expect_function_call(getCurrentTime);
 
 	expect_value(nopoll_conn_tls_new6, (intptr_t)ctx, (intptr_t)ctx);
+#ifdef FEATURE_DNS_QUERY
+    expect_string(nopoll_conn_tls_new6, (intptr_t)host_ip, g_jwt_server_ip);
+#else
     expect_string(nopoll_conn_tls_new6, (intptr_t)host_ip, HOST_IP);
+#endif
+
     will_return(nopoll_conn_tls_new6, NULL);
     expect_function_call(nopoll_conn_tls_new6);
     
 
     expect_value(nopoll_conn_tls_new, (intptr_t)ctx, (intptr_t)ctx);
+#ifdef FEATURE_DNS_QUERY    
+    expect_string(nopoll_conn_tls_new,(intptr_t)host_ip, g_jwt_server_ip);
+#else    
     expect_string(nopoll_conn_tls_new,(intptr_t)host_ip, HOST_IP);
+#endif
+    
     will_return(nopoll_conn_tls_new, (intptr_t)NULL);
     expect_function_call(nopoll_conn_tls_new);
 
@@ -369,12 +425,22 @@ void test_createConnectionConnNull()
     expect_function_call(kill);
 
     expect_value(nopoll_conn_tls_new6, (intptr_t)ctx, (intptr_t)ctx);
+    
+#ifdef FEATURE_DNS_QUERY     
+    expect_string(nopoll_conn_tls_new6, (intptr_t)host_ip, g_jwt_server_ip);
+#else
     expect_string(nopoll_conn_tls_new6, (intptr_t)host_ip, HOST_IP);
+#endif
     will_return(nopoll_conn_tls_new6, NULL);
     expect_function_call(nopoll_conn_tls_new6);
     
     expect_value(nopoll_conn_tls_new, (intptr_t)ctx, (intptr_t)ctx);
+#ifdef FEATURE_DNS_QUERY
+    expect_string(nopoll_conn_tls_new, (intptr_t)host_ip, g_jwt_server_ip);
+#else    
     expect_string(nopoll_conn_tls_new, (intptr_t)host_ip, HOST_IP);
+#endif    
+    
     will_return(nopoll_conn_tls_new, (intptr_t)&gNPConn);
     expect_function_call(nopoll_conn_tls_new);
 
@@ -409,6 +475,7 @@ void test_createConnectionConnNotOk()
     assert_non_null(ctx);
 
 #ifdef FEATURE_DNS_QUERY
+	setGlobalJWTUrl ("127.0.0.2");
 	will_return (allow_insecure_conn, 1);
 	expect_function_call (allow_insecure_conn);
 #endif
@@ -417,7 +484,12 @@ void test_createConnectionConnNotOk()
     expect_function_call(getWebpaConveyHeader);
 
     expect_value(nopoll_conn_new_opts, (intptr_t)ctx, (intptr_t)ctx);
+
+#ifdef FEATURE_DNS_QUERY    
+    expect_string(nopoll_conn_new_opts, (intptr_t)host_ip, g_jwt_server_ip);
+#else    
     expect_string(nopoll_conn_new_opts, (intptr_t)host_ip, HOST_IP);
+#endif
     will_return(nopoll_conn_new_opts, (intptr_t)&gNPConn);
     expect_function_call(nopoll_conn_new_opts);
 
@@ -432,7 +504,12 @@ void test_createConnectionConnNotOk()
     expect_function_call(nopoll_conn_unref);
 
     expect_value(nopoll_conn_new_opts, (intptr_t)ctx, (intptr_t)ctx);
+
+#ifdef FEATURE_DNS_QUERY    
+    expect_string(nopoll_conn_new_opts, (intptr_t)host_ip, g_jwt_server_ip);
+#else    
     expect_string(nopoll_conn_new_opts, (intptr_t)host_ip, HOST_IP);
+#endif
     will_return(nopoll_conn_new_opts, (intptr_t)&gNPConn);
     expect_function_call(nopoll_conn_new_opts);
 
@@ -449,7 +526,12 @@ void test_createConnectionConnNotOk()
     expect_function_call(nopoll_conn_ref_count);
 
     expect_value(nopoll_conn_new_opts, (intptr_t)ctx, (intptr_t)ctx);
+#ifdef FEATURE_DNS_QUERY    
+    expect_string(nopoll_conn_new_opts, (intptr_t)host_ip, g_jwt_server_ip);
+#else    
     expect_string(nopoll_conn_new_opts, (intptr_t)host_ip, HOST_IP);
+#endif   
+    
     will_return(nopoll_conn_new_opts, (intptr_t)&gNPConn);
     expect_function_call(nopoll_conn_new_opts);
 
@@ -486,6 +568,7 @@ void test_createConnectionConnRedirect()
     assert_non_null(ctx);
 
 #ifdef FEATURE_DNS_QUERY
+        setGlobalJWTUrl ("127.0.0.2");
 	will_return (allow_insecure_conn, 1);
 	expect_function_call (allow_insecure_conn);
 #endif
@@ -494,7 +577,12 @@ void test_createConnectionConnRedirect()
     expect_function_call(getWebpaConveyHeader);
 
     expect_value(nopoll_conn_new_opts, (intptr_t)ctx, (intptr_t)ctx);
+#ifdef FEATURE_DNS_QUERY
+    expect_string(nopoll_conn_new_opts, (intptr_t)host_ip, g_jwt_server_ip);
+#else    
     expect_string(nopoll_conn_new_opts, (intptr_t)host_ip, HOST_IP);
+#endif    
+    
     will_return(nopoll_conn_new_opts, (intptr_t)&gNPConn);
     expect_function_call(nopoll_conn_new_opts);
 
@@ -509,7 +597,12 @@ void test_createConnectionConnRedirect()
     expect_function_call(nopoll_conn_unref);
 	
     expect_value(nopoll_conn_new_opts, (intptr_t)ctx, (intptr_t)ctx);
+#ifdef FEATURE_DNS_QUERY
+    expect_string(nopoll_conn_new_opts, (intptr_t)host_ip, g_jwt_server_ip);
+#else   
     expect_string(nopoll_conn_new_opts, (intptr_t)host_ip, HOST_IP);
+#endif   
+    
     will_return(nopoll_conn_new_opts, (intptr_t)&gNPConn);
     expect_function_call(nopoll_conn_new_opts);
 
