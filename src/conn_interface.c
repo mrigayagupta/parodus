@@ -33,6 +33,7 @@
 #include "spin_thread.h"
 #include "service_alive.h"
 #include "seshat_interface.h"
+#include "crud_interface.h"
 #ifdef FEATURE_DNS_QUERY
 #include <ucresolv_log.h>
 #endif
@@ -85,12 +86,14 @@ void createSocketConnection(void (* initKeypress)())
     createNopollConnection(ctx);
     packMetaData();
     
-    UpStreamMsgQ = NULL;
+   // UpStreamMsgQ = NULL;
+    set_global_UpStreamMsgQ(NULL);
     StartThread(handle_upstream);
     StartThread(processUpstreamMessage);
     ParodusMsgQ = NULL;
     StartThread(messageHandlerTask);
     StartThread(serviceAliveTask);
+    StartThread(CRUDHandlerTask);
 
     if (NULL != initKeypress) 
     {

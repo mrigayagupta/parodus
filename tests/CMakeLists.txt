@@ -141,7 +141,7 @@ add_test(NAME test_client_list COMMAND ${MEMORY_CHECK} ./test_client_list)
 #target_link_libraries (test_client_list ${PARODUS_COMMON_LIBS})
 set(SOURCES test_client_list.c ../src/client_list.c 
  ../src/service_alive.c ../src/upstream.c ../src/networking.c ../src/nopoll_helpers.c 
- ../src/downstream.c ../src/connection.c ../src/nopoll_handlers.c 
+ ../src/crud_interface.c ../src/crud_tasks.c ../src/downstream.c ../src/connection.c ../src/nopoll_handlers.c 
  ../src/ParodusInternal.c ../src/thread_tasks.c ../src/conn_interface.c 
  ../src/partners_check.c ${PARODUS_COMMON_SRC})
 
@@ -161,7 +161,7 @@ target_link_libraries (test_client_list ${PARODUS_COMMON_LIBS})
 add_test(NAME test_service_alive COMMAND ${MEMORY_CHECK} ./test_service_alive)
 #add_executable(test_service_alive test_service_alive.c ../src/client_list.c ../src/service_alive.c ../src/upstream.c ../src/networking.c ../src/nopoll_helpers.c ../src/nopoll_handlers.c ../src/config.c ../src/connection.c ../src/ParodusInternal.c ../src/downstream.c ../src/thread_tasks.c ../src/conn_interface.c ../src/partners_check.c ${PARODUS_COMMON_SRC})
 #target_link_libraries (test_service_alive ${PARODUS_COMMON_LIBS})
-set(SOURCES test_service_alive.c ../src/client_list.c ../src/service_alive.c ../src/upstream.c ../src/networking.c ../src/nopoll_helpers.c ../src/nopoll_handlers.c ../src/config.c ../src/connection.c ../src/ParodusInternal.c ../src/downstream.c ../src/thread_tasks.c ../src/conn_interface.c ../src/partners_check.c ${PARODUS_COMMON_SRC})
+set(SOURCES test_service_alive.c ../src/client_list.c ../src/service_alive.c ../src/upstream.c ../src/networking.c ../src/nopoll_helpers.c ../src/nopoll_handlers.c ../src/config.c ../src/connection.c ../src/ParodusInternal.c ../src/downstream.c ../src/thread_tasks.c ../src/crud_interface.c ../src/crud_tasks.c ../src/conn_interface.c ../src/partners_check.c ${PARODUS_COMMON_SRC})
 if (ENABLE_SESHAT)
 set(SOURCES ${SOURCES} ../src/seshat_interface.c)
 else()
@@ -193,14 +193,17 @@ target_link_libraries (test_upstream -lcmocka ${PARODUS_COMMON_LIBS} )
 #   test_downstream
 #-------------------------------------------------------------------------------
 add_test(NAME test_downstream COMMAND ${MEMORY_CHECK} ./test_downstream)
-add_executable(test_downstream test_downstream.c ../src/downstream.c ../src/string_helpers.c)
+#add_executable(test_downstream test_downstream.c ../src/downstream.c ../src/string_helpers.c)
+add_executable(test_downstream  ../src/string_helpers.c ${SOURCES})
+
 target_link_libraries (test_downstream -lcmocka ${PARODUS_COMMON_LIBS} )
 
 #-------------------------------------------------------------------------------
 #   test_downstream_more
 #-------------------------------------------------------------------------------
 add_test(NAME test_downstream_more COMMAND ${MEMORY_CHECK} ./test_downstream_more)
-add_executable(test_downstream_more test_downstream_more.c ../src/downstream.c ../src/string_helpers.c)
+#add_executable(test_downstream_more test_downstream_more.c ../src/downstream.c ../src/string_helpers.c)
+add_executable(test_downstream_more ${SOURCES} ../src/string_helpers.c)
 target_link_libraries (test_downstream_more -lcmocka ${PARODUS_COMMON_LIBS} )
 
 #-------------------------------------------------------------------------------
@@ -214,7 +217,7 @@ target_link_libraries (test_thread_tasks -lcmocka ${PARODUS_COMMON_LIBS} )
 #   test_conn_interface
 #-------------------------------------------------------------------------------
 add_test(NAME test_conn_interface COMMAND ${MEMORY_CHECK} ./test_conn_interface)
-set(SOURCES test_conn_interface.c ../src/conn_interface.c ../src/config.c ../src/string_helpers.c ../src/mutex.c)
+#set(SOURCES test_conn_interface.c ../src/crud_interface.c ../src/crud_tasks.c ../src/conn_interface.c ../src/config.c ../src/string_helpers.c ../src/mutex.c)
 if (ENABLE_SESHAT)
 set(SOURCES ${SOURCES} ../src/seshat_interface.c)
 else()

@@ -31,8 +31,8 @@
 /*----------------------------------------------------------------------------*/
 /*                            File Scoped Variables                           */
 /*----------------------------------------------------------------------------*/
-UpStreamMsg *UpStreamMsgQ;
-ParodusMsg *ParodusMsgQ;
+//UpStreamMsg *UpStreamMsgQ;
+//ParodusMsg *ParodusMsgQ;
 extern bool close_retry;
 extern pthread_mutex_t close_mut;
 extern volatile unsigned int heartBeatTimer;
