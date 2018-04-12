@@ -151,7 +151,7 @@ set(CLIST_SRC test_client_list.c ../src/client_list.c
  ../src/service_alive.c ../src/upstream.c ../src/networking.c ../src/nopoll_helpers.c 
  ../src/downstream.c ../src/connection.c ../src/nopoll_handlers.c 
  ../src/ParodusInternal.c ../src/thread_tasks.c ../src/conn_interface.c 
- ../src/partners_check.c ${PARODUS_COMMON_SRC})
+ ../src/partners_check.c ../src/crud_interface.c ../src/crud_tasks.c ../src/crud_internal.c ${PARODUS_COMMON_SRC})
 
 if (ENABLE_SESHAT)
 set(CLIST_SRC ${CLIST_SRC} ../src/seshat_interface.c)
@@ -222,7 +222,7 @@ target_link_libraries (test_thread_tasks -lcmocka ${PARODUS_COMMON_LIBS} )
 #   test_conn_interface
 #-------------------------------------------------------------------------------
 add_test(NAME test_conn_interface COMMAND ${MEMORY_CHECK} ./test_conn_interface)
-set(CONIFC_SRC test_conn_interface.c ../src/conn_interface.c ../src/config.c ../src/string_helpers.c ../src/mutex.c)
+set(CONIFC_SRC test_conn_interface.c test_get_set.c ../src/conn_interface.c ../src/config.c ../src/string_helpers.c ../src/crud_interface.c ../src/crud_tasks.c ../src/crud_internal.c ../src/mutex.c)
 if (ENABLE_SESHAT)
 set(CONIFC_SRC ${CONIFC_SRC} ../src/seshat_interface.c)
 else()
@@ -258,9 +258,23 @@ set(TOKEN_SRC ../src/conn_interface.c ../src/config.c
  ../src/networking.c
  ../src/thread_tasks.c ../src/time.c
  ../src/string_helpers.c ../src/mutex.c 
- ../src/seshat_interface.c ../src/token.c
+ ../src/token.c
  )
-add_executable(test_token test_token.c ${TOKEN_SRC} ) 
+ 
+if (ENABLE_SESHAT)
+set(TOKEN_SRC ${TOKEN_SRC} ../src/seshat_interface.c)
+else()
+set(TOKEN_SRC ${TOKEN_SRC} ../src/seshat_interface_stub.c)
+endif (ENABLE_SESHAT)
+
+if (FEATURE_DNS_QUERY)
+set(TOKEN_SRC test_token.c ${TOKEN_SRC})
+else()
+set(TOKEN_SRC test_token_stub.c ${TOKEN_SRC})
+endif (FEATURE_DNS_QUERY)
+
+add_executable(test_token ${TOKEN_SRC} ) 
+ 
 #target_link_libraries (test_token ${PARODUS_COMMON_LIBS} ${PARODUS_JWT_LIBS} -lcmocka )
 target_link_libraries (test_token ${PARODUS_COMMON_LIBS} -lcmocka )
 

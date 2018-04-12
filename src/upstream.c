@@ -48,6 +48,26 @@ pthread_mutex_t nano_mut=PTHREAD_MUTEX_INITIALIZER;
 
 pthread_cond_t nano_con=PTHREAD_COND_INITIALIZER;
 
+UpStreamMsg * get_global_UpStreamMsgQ(void)
+{
+    return UpStreamMsgQ;
+}
+
+void set_global_UpStreamMsgQ(UpStreamMsg * UpStreamQ)
+{
+    UpStreamMsgQ = UpStreamQ;
+}
+
+pthread_cond_t *get_global_nano_con(void)
+{
+    return &nano_con;
+}
+
+pthread_mutex_t *get_global_nano_mut(void)
+{
+    return &nano_mut;
+}
+
 /*----------------------------------------------------------------------------*/
 /*                             Internal Functions                             */
 /*----------------------------------------------------------------------------*/
@@ -176,6 +196,7 @@ void *processUpstreamMessage()
     reg_list_item_t *temp = NULL;
     int matchFlag = 0;
     int status = -1;
+    int crud_msg = 0;
 
     while(FOREVER())
     {
@@ -192,6 +213,7 @@ void *processUpstreamMessage()
             /*** For MsgType 9 Perform Nanomsg client Registration else Send to server ***/	
             ParodusPrint("---- Decoding Upstream Msg ----\n");
 
+	    ParodusInfo("message->msg : %s message->len : %lu\n", (char*)message->msg, message->len);
             rv = wrp_to_struct( message->msg, message->len, WRP_BYTES, &msg );
             if(rv > 0)
             {
@@ -304,6 +326,7 @@ void *processUpstreamMessage()
                         ParodusInfo(" Received upstream data with MsgType: %d dest: '%s' transaction_uuid: %s\n", 
                                       msgType, msg->u.req.dest, msg->u.req.transaction_uuid );
                     } else {
+                    	crud_msg = 1;
                         ParodusInfo(" Received upstream data with MsgType: %d dest: '%s' transaction_uuid: %s status: %d\n", 
                                       msgType, msg->u.crud.dest, msg->u.crud.transaction_uuid, msg->u.crud.status );
                     }
@@ -318,10 +341,19 @@ void *processUpstreamMessage()
             wrp_free_struct(msg);
             msg = NULL;
 
-            if(nn_freemsg (message->msg) < 0)
-            {
-                ParodusError ("Failed to free msg\n");
+	    // nn_freemsg should not be done for CRUD requests.
+	    
+	    if(!crud_msg)
+	    {
+	            ParodusInfo("not crud_msg : doing nn_freemsg \n");
+		    if(nn_freemsg (message->msg) < 0)
+		    {
+		        ParodusError ("Failed to free msg\n");
+		    }
             }
+            
+            crud_msg = 0;
+            ParodusInfo("Reset crud_msg :%d\n", crud_msg);
             free(message);
             message = NULL;
         }

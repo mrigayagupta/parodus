@@ -180,6 +180,12 @@ static uint8_t i;
 /*----------------------------------------------------------------------------*/
 /*                                   Mocks                                    */
 /*----------------------------------------------------------------------------*/
+void addCRUDmsgToQueue(wrp_msg_t *crudMsg)
+{
+	(void)crudMsg;
+	return;
+}
+
 int validate_partner_id(wrp_msg_t *msg, partners_t **partnerIds)
 {
     (void) msg; (void) partnerIds;
