@@ -71,14 +71,14 @@ int createObject( wrp_msg_t *reqMsg, wrp_msg_t **response )
 	char *out = NULL;
 	cJSON *parameters = NULL, *paramObj = NULL;
 
-	printf("Inside createObject\n");
+	ParodusInfo("Inside createObject\n");
 	ParodusInfo("resp_msg->u.crud.source is %s\n", reqMsg->u.crud.dest);
 	ParodusInfo("reqMsg->u.crud.payload is %s\n", (char *)reqMsg->u.crud.payload);
 
 	if(reqMsg->u.crud.dest !=NULL)
 	{
 	   destVal = strdup(reqMsg->u.crud.dest);
-	   printf("destVal is %s\n", destVal);
+	   ParodusInfo("destVal is %s\n", destVal);
 
 	    if( (destVal != NULL))
 	    {
@@ -281,5 +281,161 @@ int retrieveObject( wrp_msg_t *reqMsg, wrp_msg_t **response )
 		}
 
 	return 0;
+}
+
+int deleteObject( wrp_msg_t *reqMsg, wrp_msg_t **response )
+{
+	char *destVal = NULL;
+	cJSON *paramArray = NULL, *json = NULL;
+	char *jsonData = NULL;
+	char *child_ptr,*obj[5], *out = NULL;
+	int i = 1, j ,status =0, objlevel=1, found =0;
+	int itemSize = 0, delete_status = 0;
+	
+	status = readFromJSON(&jsonData);
+	if(status == 1)
+        {
+        	ParodusInfo("Data from JSON: %s\n", jsonData);
+        	json = cJSON_Parse( jsonData );
+        	if( !json ) 
+		{
+		    ParodusError( "Error before: [%s]\n", cJSON_GetErrorPtr() );
+		    (*response)->u.crud.status = -1;
+		    return -1;
+		} 
+		else
+		{
+			if(reqMsg->u.crud.dest !=NULL)
+			{
+			   destVal = strdup(reqMsg->u.crud.dest);
+			   ParodusInfo("destVal is %s\n", destVal);
+
+			    if( (destVal != NULL))
+			    {
+			    	child_ptr = strtok(destVal , "/");
+			    	
+			    	//Get the 1st object
+				obj[0] = strdup( child_ptr );
+				ParodusInfo( "parent is %s\n", obj[0] );
+				
+				while( child_ptr != NULL ) 
+				{
+				    child_ptr = strtok( NULL, "/" );
+				    if( child_ptr != NULL ) 
+				    {
+				        obj[i] = strdup( child_ptr );
+				        ParodusInfo( "child obj[%d]:%s\n", i, obj[i] );
+				        i++;
+				    }
+				}
+				
+                		objlevel = i;
+                		ParodusInfo( " Number of object level %d\n", objlevel );
+                		
+                		paramArray = cJSON_GetObjectItem( json, obj[2] );
+                		
+				if( paramArray != NULL ) 
+				{
+					itemSize = cJSON_GetArraySize( paramArray );
+					if( itemSize == 0 ) //TODO check this scenario to remove from paroduscfg
+                    			{
+                    			
+						if(cJSON_GetObjectItem( json, obj[2] )->valuestring)
+						{
+						    cJSON_DeleteItemFromObject( json, obj[2] );
+						    (*response)->u.crud.status = 1;
+						     
+						}
+                    				
+                    				ParodusInfo("delete single key value pair from tags..\n");
+                    			}
+                    			else
+                    			{
+                    				//top level tags object	
+                    				if( strcmp( cJSON_GetObjectItem( json, obj[2] )->string, obj[objlevel - 1] ) == 0 ) 
+                    				{
+                    					ParodusInfo("Top level tags object delete not supported\n");
+                    					cJSON_DeleteItemFromObject(json,"tags");
+                    					return -1;
+                    				}
+                    				else
+                    				{
+                    				    //deletes internal objects from tags array object.
+                    				    
+                    				    //to traverse through total number of objects in array
+                    				    for( i = 0 ; i < itemSize ; i++ ) 
+                    				    {
+                    					cJSON* subitem = cJSON_GetArrayItem( paramArray, i );
+                    					int subitemSize = cJSON_GetArraySize( subitem );
+                    					
+                    					//to traverse through subitem in each test element
+                    					for( j = 0 ; j < subitemSize ; j++ ) 
+                    					{
+                    					
+                    						ParodusInfo("subitemSize:%d\n", subitemSize);
+                    						
+                    						if( strcmp( cJSON_GetArrayItem( subitem, j )->string, obj[objlevel - 1] ) == 0 ) 
+                    						{
+                    							ParodusInfo( " %s : %s \n", cJSON_GetArrayItem( subitem, j )->string, cJSON_GetArrayItem( subitem, j )->valuestring );
+                                            				ParodusInfo("Delete: requested object found \n");	
+                                            				if(subitemSize == 1)
+                                            				{
+                                            					ParodusInfo("deleting from paramArray\n");
+                                            					cJSON_DeleteItemFromArray(paramArray, i);
+                                            				}
+                                            				else
+                                            				{
+                                            					ParodusInfo("deleting from subitem\n");
+                                            					cJSON_DeleteItemFromArray(subitem, j);
+                                            				}
+                                            				found = 1;
+                                            				break;
+                    						
+                    						}
+                    						else
+                    						{
+                    							ParodusError("array object not found\n");
+                    						}
+                    					
+                    					}
+                    					if(found)
+                    					{
+                    						ParodusPrint("break, since array object is found\n");
+                    						break;
+                    					}
+                    					else
+                    					{
+                    					       ParodusError("Unable to delete requested object\n");
+                    					}
+                    				     }
+                    				   
+                    				   }
+                    					
+                    			     }
+                    			}
+                    		}
+			     }
+				
+			 }
+	}	    
+	
+	out = cJSON_Print( json );
+	ParodusInfo("%s\n",out);
+	
+	delete_status = writeToJSON(out);
+	if(delete_status == 1)
+	{
+		ParodusInfo("Deleted Data is successfully updated to JSON\n");
+	}
+	else
+	{
+		ParodusError("Failed to update deleted data to JSON\n");
+	}
+            
+	cJSON_Delete( json );
+	free( out );
+	free( jsonData );
+       	return 0;
+
 }
 

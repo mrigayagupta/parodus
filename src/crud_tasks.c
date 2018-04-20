@@ -54,7 +54,7 @@ int processCrudRequest( wrp_msg_t *reqMsg, wrp_msg_t **responseMsg)
 	    {
 	    	ParodusError("Failed to create object in config JSON\n");
 	    	response = cJSON_CreateObject();
-		cJSON_AddNumberToObject(response, "statusCode", 530);
+		cJSON_AddNumberToObject(response, "statusCode", 520);
 		cJSON_AddStringToObject(response, "message", "Failure");
 		if(response != NULL)
 		{
@@ -100,9 +100,9 @@ int processCrudRequest( wrp_msg_t *reqMsg, wrp_msg_t **responseMsg)
 	    }
 	    else
 	    {
-	    	ParodusError("Failed to create object in config JSON\n");
+	    	ParodusError("Failed to retrieve object in config JSON\n");
 	    	response = cJSON_CreateObject();
-		cJSON_AddNumberToObject(response, "statusCode", 530);
+		cJSON_AddNumberToObject(response, "statusCode", 520);
 		cJSON_AddStringToObject(response, "message", "Failure");
 		if(response != NULL)
 		{
@@ -144,25 +144,54 @@ int processCrudRequest( wrp_msg_t *reqMsg, wrp_msg_t **responseMsg)
 	    
 	case WRP_MSG_TYPE__DELETE:
 	    ParodusInfo( "DELETE request\n" );
-            response = cJSON_CreateObject();
-            cJSON_AddNumberToObject(response, "statusCode", 200);
-            cJSON_AddStringToObject(response, "message", "Success");
-                            
-	    if(response != NULL)
-            {
-		str = cJSON_PrintUnformatted(response);
-		ParodusInfo("Payload Response: %s\n", str);
+	    
+	    ret = deleteObject( reqMsg, &resp_msg );
+	    
+	    if(ret == 0)
+	    {
+	    
+		    response = cJSON_CreateObject();
+		    cJSON_AddNumberToObject(response, "statusCode", 200);
+		    cJSON_AddStringToObject(response, "message", "Success");
+		                    
+		    if(response != NULL)
+		    {
+			str = cJSON_PrintUnformatted(response);
+			ParodusInfo("Payload Response: %s\n", str);
 
 
-		resp_msg ->u.crud.payload = (void *)str;
-		resp_msg ->u.crud.payload_size = strlen(str);
+			resp_msg ->u.crud.payload = (void *)str;
+			resp_msg ->u.crud.payload_size = strlen(str);
 
-		*responseMsg = resp_msg;
-		ParodusInfo("(*responseMsg)->u.crud.payload : %s\n", (char* )(*responseMsg)->u.crud.payload);
-		ParodusInfo("(*responseMsg)->u.crud.payload_size : %lu\n", (*responseMsg)->u.crud.payload_size);
-		cJSON_Delete(response);
-	    }
-	    break;
+			*responseMsg = resp_msg;
+			ParodusInfo("(*responseMsg)->u.crud.payload : %s\n", (char* )(*responseMsg)->u.crud.payload);
+			ParodusInfo("(*responseMsg)->u.crud.payload_size : %lu\n", (*responseMsg)->u.crud.payload_size);
+			cJSON_Delete(response);
+		    }
+	     }
+	     else
+	     {
+	     		ParodusError("Failed to delete object in config JSON\n");
+		    	response = cJSON_CreateObject();
+			cJSON_AddNumberToObject(response, "statusCode", 520);
+			cJSON_AddStringToObject(response, "message", "Failure");
+			if(response != NULL)
+			{
+				str = cJSON_PrintUnformatted(response);
+				ParodusInfo("Payload Response: %s\n", str);
+
+				resp_msg ->u.crud.payload = (void *)str;
+				resp_msg ->u.crud.payload_size = strlen(str);
+
+				*responseMsg = resp_msg;
+				ParodusInfo("(*responseMsg)->u.crud.payload : %s\n", (char* )(*responseMsg)->u.crud.payload);
+				ParodusInfo("(*responseMsg)->u.crud.payload_size : %lu\n", (*responseMsg)->u.crud.payload_size);
+				cJSON_Delete(response);
+			}
+	     	
+	     }
+	      
+	     break;
 	    
 	default:
 	    ParodusInfo( "Unknown msgType for CRUD request\n" );
