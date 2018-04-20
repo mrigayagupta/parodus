@@ -122,3 +122,164 @@ int createObject( wrp_msg_t *reqMsg, wrp_msg_t **response )
 }
 
 
+int retrieveObject( wrp_msg_t *reqMsg, wrp_msg_t **response )
+{
+
+	char *destVal = NULL;
+	cJSON *paramArray = NULL, *parameters = NULL, *childObj = NULL;
+	cJSON *json = NULL;
+	char *jsonData = NULL;
+	char *child_ptr,*obj[5],*resValue = NULL;
+	int objlevel = 1, i = 1, j, found = 0, status;
+	
+	
+	cJSON *jsonresponse = cJSON_CreateObject();
+	
+	status = readFromJSON(&jsonData);
+	if(status == 1)
+        {
+        	ParodusInfo("Data from JSON: %s\n", jsonData);
+        	json = cJSON_Parse( jsonData );
+        	if( !json ) 
+		{
+		    ParodusError( "Error before: [%s]\n", cJSON_GetErrorPtr() );
+		    (*response)->u.crud.status = -1;
+		    return -1;
+		} 
+		else
+		{
+			if(reqMsg->u.crud.dest !=NULL)
+			{
+			   destVal = strdup(reqMsg->u.crud.dest);
+			   ParodusInfo("destVal is %s\n", destVal);
+
+			    if( (destVal != NULL))
+			    {
+			    	child_ptr = strtok(destVal , "/");
+			    	
+			    	//Get the 1st object
+				obj[0] = strdup( child_ptr );
+				ParodusInfo( "parent is %s\n", obj[0] );
+				
+				
+				while( child_ptr != NULL ) 
+				{
+				    child_ptr = strtok( NULL, "/" );
+				    if( child_ptr != NULL ) {
+				        obj[i] = strdup( child_ptr );
+				        ParodusInfo( "child obj[%d]:%s\n", i, obj[i] );
+				        i++;
+				    }
+				}
+				
+				objlevel = i;
+				ParodusInfo( " Number of object level %d\n", objlevel );
+				
+				paramArray = cJSON_GetObjectItem( json, obj[2] );
+				if( paramArray != NULL ) 
+				{
+					int itemSize = cJSON_GetArraySize( paramArray );
+                    			ParodusInfo( "itemSize %d\n", itemSize );
+                    			if( itemSize == 0 ) //TODO check this scenario to get from paroduscfg
+                    			{
+                    				resValue = cJSON_GetObjectItem( json, obj[2] )->valuestring;
+                        			ParodusInfo( "resValue is %s\n", resValue );
+                        			(*response)->u.crud.payload = resValue;
+                        			(*response)->u.crud.status = 1;
+                    			
+                    			}
+                    			else
+                    			{
+                    				ParodusInfo("cJSON_GetObjectItem( json, obj[2] is %s\n", cJSON_GetObjectItem( json, obj[2])->string);
+                    				//to retrieve top level tags object
+                    				if( strcmp( cJSON_GetObjectItem( json, obj[2] )->string, obj[objlevel - 1] ) == 0 ) 
+                    				{
+                    					ParodusInfo("top level tags object\n");
+                    					
+                    					ParodusPrint("obj[objlevel - 1] is %s\n", obj[objlevel - 1]);
+                    					cJSON_AddItemToObject( jsonresponse, obj[objlevel - 1] , parameters = cJSON_CreateArray() );
+                    					
+                    					
+                    					for( i = 0; i < itemSize; i++ ) 
+                    					{
+                    						cJSON* subitem = cJSON_GetArrayItem( paramArray, i );
+                                				int subitemSize = cJSON_GetArraySize( subitem );
+                                				
+                                				cJSON_AddItemToArray(parameters, childObj = cJSON_CreateObject());
+                                
+                                				for( j = 0 ; j < subitemSize ; j++ ) 
+								{
+								    ParodusInfo( " %s : %s \n", cJSON_GetArrayItem( subitem, j )->string, cJSON_GetArrayItem( subitem, j )->valuestring );
+								    cJSON_AddStringToObject( childObj, cJSON_GetArrayItem( subitem, j )->string, cJSON_GetArrayItem( subitem, j )->valuestring );
+								}
+                    					}
+                    					
+                    				}
+                    				else
+                    				{
+                    				
+                    				    //to traverse through total number of objects in array
+                    				    for( i = 0 ; i < itemSize ; i++ ) 
+                    				    {
+                    					cJSON* subitem = cJSON_GetArrayItem( paramArray, i );
+                    					int subitemSize = cJSON_GetArraySize( subitem );
+                    					
+                    					//to traverse through each subitem in each test element
+                    					for( j = 0 ; j < subitemSize ; j++ ) 
+                    					{
+                    					
+                    						ParodusPrint("obj[objlevel - 1] is %s\n", obj[objlevel - 1]);
+                    						ParodusInfo("cJSON_GetArrayItem( subitem, j )->string:%s\n", cJSON_GetArrayItem( subitem, j )->string);
+                    						if( strcmp( cJSON_GetArrayItem( subitem, j )->string, obj[objlevel - 1] ) == 0 ) 
+                    						{
+                    							ParodusInfo( " %s : %s \n", cJSON_GetArrayItem( subitem, j )->string, cJSON_GetArrayItem( subitem, j )->valuestring );
+                                            				cJSON_AddStringToObject( jsonresponse, cJSON_GetArrayItem( subitem, j )->string, cJSON_GetArrayItem( subitem, j )->valuestring );
+                                            				ParodusInfo("Retrieve: requested object found \n");
+                                            				found = 1;
+                                            				break;
+                    						
+                    						}
+                    						else
+                    						{
+                    							ParodusError("array object not found\n");
+                    						}
+                    					
+                    					}
+                    					if(found)
+                    					{
+                    						ParodusPrint("break, since array object is found\n");
+                    						break;
+                    				
+                    					}
+                    					else
+                    					{
+                    					       ParodusError("Unable to retrieve requested object\n");
+                    					       return -1;
+                    					}
+                    				     }
+                    				}
+                    				
+                    				char *str1 = cJSON_PrintUnformatted( jsonresponse );
+                            			ParodusInfo( "jsonResponse %s\n", str1 );
+                            			(*response)->u.crud.status = 1;
+                            			(*response)->u.crud.payload = str1;
+                    			
+                    				
+                    			}
+                    			
+				}
+				
+			    }
+			    else
+			    {
+				ParodusError("Unable to parse object details from RETRIEVE request\n");
+				return -1;
+			    }
+			}
+			    
+		     }
+		}
+
+	return 0;
+}
+

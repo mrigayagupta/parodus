@@ -18,5 +18,5 @@
 #include <stdlib.h>
 
 int createObject( wrp_msg_t *reqMsg, wrp_msg_t **response );
-
+int retrieveObject( wrp_msg_t *reqMsg, wrp_msg_t **response );
 
