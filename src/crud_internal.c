@@ -62,19 +62,26 @@ static int readFromJSON(char **data)
 }
 
 
-int createObject( wrp_msg_t *reqMsg, wrp_msg_t **response )
+int createObject( wrp_msg_t *reqMsg , wrp_msg_t **response)
 {
 	char *destVal = NULL;
-	char objName[100] = {'\0'};
-	char tagName[100] = {'\0'};
-	char *temp_ptr = NULL;
 	char *out = NULL;
-	cJSON *parameters = NULL, *paramObj = NULL;
+	cJSON *parameters = NULL;
+	cJSON *json, *jsonPayload = NULL;//, *testObj = NULL;
+	char *child_ptr,*obj[5];
+	int objlevel = 1, i = 1, j=0;;
+	char *jsonData = NULL;
+	cJSON *testObj1 = NULL;
+	int found =0;
 
 	ParodusInfo("Inside createObject\n");
-	ParodusInfo("resp_msg->u.crud.source is %s\n", reqMsg->u.crud.dest);
+	ParodusInfo("resp_msg->u.crud.dest is %s\n", reqMsg->u.crud.dest);
 	ParodusInfo("reqMsg->u.crud.payload is %s\n", (char *)reqMsg->u.crud.payload);
-
+	
+	int status = readFromJSON(&jsonData);
+	printf("status %d\n", status);
+	json = cJSON_Parse( jsonData );
+	
 	if(reqMsg->u.crud.dest !=NULL)
 	{
 	   destVal = strdup(reqMsg->u.crud.dest);
@@ -82,43 +89,122 @@ int createObject( wrp_msg_t *reqMsg, wrp_msg_t **response )
 
 	    if( (destVal != NULL))
 	    {
-	    	temp_ptr = strtok(destVal , "/");
-		temp_ptr = strtok(NULL , "/"); 
-		temp_ptr = strtok(NULL , "/");
+	    	child_ptr = strtok(destVal , "/");
+	    	
+	    	//Get the 1st object
+		obj[0] = strdup( child_ptr );
+		ParodusInfo( "parent is %s\n", obj[0] );
 
-		parStrncpy(tagName, temp_ptr, sizeof(tagName));
-		ParodusInfo("tagName is %s\n", tagName);
 
-		parStrncpy(objName, strtok(NULL , "/"), sizeof(objName));
-		ParodusInfo("Object name parsed from CREATE request:%s\n", objName);
-	    }
+		while( child_ptr != NULL ) 
+		{
+		    child_ptr = strtok( NULL, "/" );
+		    if( child_ptr != NULL ) {
+			obj[i] = strdup( child_ptr );
+			ParodusInfo( "child obj[%d]:%s\n", i, obj[i] );
+			i++;
+		    }
+		}
+
+		objlevel = i;
+		ParodusInfo( " Number of object level %d\n", objlevel );
+
+
+		jsonPayload = cJSON_Parse( reqMsg->u.crud.payload );		
+		
+		cJSON* res_obj = cJSON_CreateObject();
+		
+		char *key = cJSON_GetArrayItem( jsonPayload, 0 )->string;
+
+		int value = cJSON_GetArrayItem( jsonPayload, 0 )->valueint;
+		ParodusInfo("key:%s value:%d\n", key, value);
+		
+		cJSON *tagObj = cJSON_GetObjectItem( json, obj[2] );
+		if(tagObj !=NULL)
+		{
+			printf("tag obj exists\n");
+			cJSON *testObj = cJSON_GetObjectItem( tagObj, obj[objlevel -1] );
+			
+			if(testObj !=NULL)
+			{
+				int jsontagitemSize = cJSON_GetArraySize( tagObj );
+                                printf( "jsontagitemSize is %d\n", jsontagitemSize );
+                            
+				for( i = 0 ; j < jsontagitemSize ; j++ ) 
+				{
+					char *testkey = cJSON_GetArrayItem( tagObj, j )->string;
+					printf("testkey is %s\n", testkey);
+				
+				
+					if( strcmp( testkey, obj[objlevel -1] ) == 0 ) 
+					{
+						printf( "testObj already exists.Update it\n" );
+						found =1;
+				            	cJSON_ReplaceItemInObject(testObj,key,cJSON_CreateNumber(value));
+				            	(*response)->u.crud.status = 201;
+				            	break;
+		                    	}
+					else
+					{
+						printf("testObj not found, iterating..\n");
+						
+		
+					}
+				}
+				
+			}
+			else
+			{
+				printf("testObj not exists----, adding it\n");
+				cJSON_AddItemToObject(tagObj, obj[objlevel -1], testObj1 = cJSON_CreateObject());
+				cJSON_AddNumberToObject(testObj1, key, value);
+		
+	            		(*response)->u.crud.status = 201;
+				
+				
+			}
+		}
+		else
+		{
+			printf("tagObj doesnot exists\n");
+			cJSON_AddItemToObject(res_obj , obj[2], parameters = cJSON_CreateObject());
+			cJSON_AddItemToObject(parameters, obj[3], testObj1 = cJSON_CreateObject());
+			cJSON_AddNumberToObject(testObj1, key, value);
+		
+	            	(*response)->u.crud.status = 201;
+				            
+		}
+		
+		cJSON_AddItemToObject(res_obj , obj[2], tagObj);
+		out = cJSON_PrintUnformatted(res_obj );
+
+		ParodusInfo("out : %s\n",out);
+		int status = writeToJSON(out);
+		if(status == 1)
+		{
+			ParodusInfo("Data is successfully added to JSON\n");
+		}
+		else
+		{
+			ParodusError("Failed to add data to JSON\n");
+		}
+
+	    } 
 	    else
 	    {
 		ParodusError("Unable to parse object details from CREATE request\n");
-	    }
-	    
-           cJSON* res_obj = cJSON_CreateObject();
-	   cJSON_AddItemToObject(res_obj , tagName, parameters = cJSON_CreateArray());
-	   cJSON_AddItemToArray(parameters, paramObj = cJSON_CreateObject());
-	   cJSON_AddStringToObject(paramObj, objName, reqMsg->u.crud.payload);
-	
-           out = cJSON_PrintUnformatted(res_obj );
-                
-            ParodusInfo("out : %s\n",out);
-            int status = writeToJSON(out);
-            if(status == 1)
-            {
-                ParodusInfo("Data is successfully added to JSON\n");
-            }
-            else
-            {
-                ParodusError("Failed to add data to JSON\n");
-            }
-            printf("response:%s\n", (char *)(*response)->u.crud.payload);
-	    
-	}    
-	
-    return 0;
+		(*response)->u.crud.status = 0;
+		return -1;
+	    } 
+	}
+	else
+	{
+		printf("Requested dest path is NULL\n");
+        	(*response)->u.crud.status = 0;
+        	return -1;
+	}  
+
+	return 0;
 }
 
 

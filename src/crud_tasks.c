@@ -33,7 +33,7 @@ int processCrudRequest( wrp_msg_t *reqMsg, wrp_msg_t **responseMsg)
 	    if(ret == 0)
 	    {
 		    response = cJSON_CreateObject();
-		    cJSON_AddNumberToObject(response, "statusCode", 200);
+		    cJSON_AddNumberToObject(response, "statusCode", 201);
 		    cJSON_AddStringToObject(response, "message", "Success");
 		                    
 		    if(response != NULL)
